@@ -75,6 +75,25 @@ def test_json_direct_list_str(benchmark):
     benchmark(serializer.to_json, items)
 
 
+@pytest.mark.benchmark(group='large-string')
+@pytest.mark.parametrize('size', [1_000, 1_000_000, 10_000_000], ids=['1kb', '1mb', '10mb'])
+def test_json_large_string(benchmark, size):
+    serializer = SchemaSerializer({'type': 'str'})
+    value = 'A' * size
+
+    assert serializer.to_json(value) == b'"' + value.encode() + b'"'
+    benchmark(serializer.to_json, value)
+
+
+@pytest.mark.benchmark(group='large-string')
+def test_json_large_string_with_escapes(benchmark):
+    serializer = SchemaSerializer({'type': 'str'})
+    value = ('A' * 999_999) + '\n'
+
+    assert serializer.to_json(value) == b'"' + (('A' * 999_999) + '\\n').encode() + b'"'
+    benchmark(serializer.to_json, value)
+
+
 @pytest.mark.benchmark(group='list-of-str')
 def test_python_json_list_str(benchmark):
     serializer = SchemaSerializer({'type': 'list', 'items_schema': {'type': 'str'}})
