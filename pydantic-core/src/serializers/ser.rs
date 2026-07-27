@@ -723,9 +723,23 @@ where
 {
     let bytes = value.as_bytes();
 
-    let mut start = 0;
+    // Most strings do not need escaping. Keep this path simple so large strings such as
+    // base64-encoded payloads can be copied after a single scan instead of processing every
+    // byte through the escape table and formatter.
+    let Some(first_escape) = bytes
+        .iter()
+        .position(|&byte| byte < 0x20 || byte == b'"' || byte == b'\\')
+    else {
+        return formatter.write_string_fragment(writer, value);
+    };
 
-    for (i, &byte) in bytes.iter().enumerate() {
+    if first_escape > 0 {
+        tri!(formatter.write_string_fragment(writer, &value[..first_escape]));
+    }
+
+    let mut start = first_escape;
+
+    for (i, &byte) in bytes.iter().enumerate().skip(first_escape) {
         let escape = ESCAPE[byte as usize];
         if escape == 0 {
             continue;
